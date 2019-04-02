@@ -48,22 +48,38 @@ void init(int& shmid, int& msqid, void*& sharedMemPtr)
     
     
     /* TODO: Allocate a piece of shared memory. The size of the segment must be SHARED_MEMORY_CHUNK_SIZE. */
+    
     /* TODO: Attach to the shared memory */
-    /* TODO: Create a message queue */
+    /* source: http://users.cs.cf.ac.uk/Dave.Marshall/C/node27.html
+     
+     * Locate the segment.
+     
+    if ((shmid = shmget(key, SHMSZ, 0666)) < 0) {
+        perror("shmget");
+        exit(1);
+    }
+     * Now we attach the segment to our data space.
+    
+    if ((shm = shmat(shmid, NULL, 0)) == (char *) -1) {
+        perror("shmat");
+        exit(1);
+     */
     if((shmid=shmget(key, SHARED_MEMORY_CHUNK_SIZE, IPC_CREAT | 0666))<0)
     {
         perror("shmget ERROR");
-        exit(-1);
+        exit(1);
     }
     if((sharedMemPtr = shmat(shmid, NULL, 0)) == (char *) -1)
     {
         perror("shmat ERROR");
-        exit(-1);
+        exit(1);
     }
+    /* TODO: Create a message queue */
+   //msgget use to creat queue
     if((msqid = msgget(key, IPC_CREAT | 0666))<0)
     {
         perror("msgget ERROR");
-        exit(-1);
+        exit(1);
     }
     /* Store the IDs and the pointer to the shared memory region in the corresponding parameters */
     
@@ -106,12 +122,14 @@ void mainLoop()
    const int meslong = sizeof(message)-sizeof(long);
     if(msgrcv(msqid, &recmes, meslong, SENDER_DATA_TYPE, 0)<0)
     {
-        perror("Wrong receve message size");
+        perror("msqid ERROR");
         fclose(fp);
         exit(-1);
     }
     
+    //set the message size
     msgSize=recmes.size;
+
     
     while(msgSize != 0)
     {
@@ -130,6 +148,7 @@ void mainLoop()
              * does not matter in this case).
              */
             
+            //set the type
             recmes.mtype=RECV_DONE_TYPE;
             if(msgsnd(msqid, &recmes, 0, 0)==-1)
             {
@@ -137,7 +156,6 @@ void mainLoop()
                 exit(-1);
             }
             
-            msgSize=recmes.size;
             
         
         }
@@ -200,6 +218,6 @@ int main(int argc, char** argv)
     mainLoop();
     
     /** TODO: Detach from shared memory segment, and deallocate shared memory and message queue (i.e. call cleanup) **/
-    
+    cleanUp(shmid,msqid,sharedMemPtr);
     return 0;
 }
